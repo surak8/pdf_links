@@ -94,15 +94,20 @@ namespace NSPdf_links {
         string prev;
 
         void btnCreate_Click(object sender, EventArgs e) {
-            OpenFileDialog ofd = new OpenFileDialog();
+            SaveFileDialog ofd = new SaveFileDialog();
+            string dir;
 
             ofd.InitialDirectory = Directory.GetCurrentDirectory();
-            ofd.FileName = "PDF|*.pdf";
+            ofd.Filter = "PDF|*.pdf";
             ofd.FilterIndex = 0;
-            ofd.Multiselect = false;
+            //ofd.Multiselect = false;
             ofd.AddExtension = true;
+            if (!string.IsNullOrEmpty(prev)) {
+                ofd.InitialDirectory = dir = Path.GetDirectoryName(prev);
+                ofd.FileName = Path.GetFileName(prev);
+            }
             if (ofd.ShowDialog()  == DialogResult.OK) {
-                createDocument(ofd.FileName);
+                createDocument(prev=ofd.FileName);
             }
         }
 
