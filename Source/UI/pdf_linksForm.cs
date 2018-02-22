@@ -12,13 +12,16 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using System.Windows.Forms;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
-using ITF=iTextSharp.text.Font;
-//iTextSharp.text.Font.NORMAL, BaseColor.BLUE);
+using PP = iTextSharp.text.pdf.parser;
+using ITF = iTextSharp.text.Font;
+using System.Collections;
 
 namespace NSPdf_links {
     public partial class pdf_linksForm : INotifyPropertyChanged {
@@ -124,10 +127,10 @@ namespace NSPdf_links {
         #endregion
 
         void btnGenOpSheet_Click(object sender, EventArgs e) {
-            string[] files;
-            string model, wildCard;
             IDictionary<string, List<FullFilePath>> modelMap;
             FullFilePath ffp;
+            string[] files;
+            string model, wildCard;
             const string DEFAULT_WILDCARD = "*.pdf";
 
             wildCard = DEFAULT_WILDCARD;
@@ -317,7 +320,7 @@ namespace NSPdf_links {
         static void generateModelTables(IDictionary<string, List<FullFilePath>> modelMap, Document doc, List<string> models) {
             PdfPTable table;
             PdfPCell cell;
-            Chunk c;
+            Chunk c, c2;
 
             foreach (string amodel in models) {
                 table = new PdfPTable(1);
@@ -325,12 +328,13 @@ namespace NSPdf_links {
 
                 cell = new PdfPCell();
                 c = new Chunk("Model " + amodel);
-                c.SetAnchor("page_" + amodel);
+                c2 = c.SetAnchor("page_" + amodel);
+                //System.Diagnostics.Trace.WriteLine("anchor=" + c.SetAnchor ();
                 cell.AddElement(c);
                 table.AddCell(cell);
-
                 generateModelOpLinks(modelMap, doc, table, amodel);
                 doc.Add(table);
+                doc.Add(new Paragraph());
             }
         }
 
@@ -342,6 +346,7 @@ namespace NSPdf_links {
                 cell = new PdfPCell();
                 c = new Chunk("Op-" + avar.opNumber);
                 c.SetAnchor(avar.fullPath);
+                System.Diagnostics.Trace.WriteLine(avar.fullPath);
                 cell.AddElement(c);
                 table.AddCell(cell);
                 doc.Add(new Rectangle(10, 10));
@@ -350,18 +355,282 @@ namespace NSPdf_links {
 
         static void generateIndex(Document doc, List<string> models) {
             Anchor a;
-            Font f;
             Paragraph p;
+            Font f;
 
             f = new Font(ITF.FontFamily.COURIER, 10f, iTextSharp.text.Font.NORMAL, BaseColor.BLUE);
             foreach (string amodel in models) {
                 a = new Anchor(amodel, f);
                 a.Reference = "#page_" + amodel;
+                System.Diagnostics.Trace.WriteLine("ref=" + a.Reference);
                 p = new Paragraph();
                 p.Add(a);
                 doc.Add(p);
             }
             doc.NewPage();
+        }
+
+        void tsmiFileOpen_Click(object sender, EventArgs e) {
+            OpenFileDialog ofd = new OpenFileDialog();
+            //string dir;
+
+            ofd.Filter = "PDF|*.pdf";
+            ofd.FilterIndex = 0;
+            ofd.Multiselect = false;
+            if (string.IsNullOrEmpty(prev))
+                ofd.InitialDirectory = Directory.GetCurrentDirectory();
+            else {
+                ofd.InitialDirectory = Path.GetDirectoryName(prev);
+                ofd.FileName = Path.GetFileName(prev);
+            }
+            if (ofd.ShowDialog() == DialogResult.OK) {
+                PdfReader reader = new PdfReader(prev = ofd.FileName);
+                //PdfReader pdfReader = new PdfReader(fileName);
+
+                //for (int page = 1; page <= reader.NumberOfPages; page++) {
+                //    PP.ITextExtractionStrategy strategy = new PP.SimpleTextExtractionStrategy();
+                //    string currentText = PP.PdfTextExtractor.GetTextFromPage(reader, page, strategy);
+
+                //    currentText = Encoding.UTF8.GetString(ASCIIEncoding.Convert(Encoding.Default, Encoding.UTF8, Encoding.Default.GetBytes(currentText)));
+                //    System.Diagnostics.Trace.WriteLine(currentText);
+                //    //text.Append(currentText);
+                //}
+                //doSomething(reader);
+                myproc(reader);
+                reader.Close();
+            }
+        }
+
+        void doSomething(PdfReader reader) {
+            //pdfReader.Close();
+            string tmp;
+            PP.SimpleTextExtractionStrategy blah;
+            tester atester = null;
+            blah = new PP.SimpleTextExtractionStrategy();
+            //Debug.WriteLine("here");
+            for (int page = 1; page <= reader.NumberOfPages; page++) {
+                //Debug.WriteLine("here");
+                var avar = reader.GetLinks(page);
+                //Debug.WriteLine("here");
+                var v1 = reader.GetNamedDestinationFromNames();
+                var v2 = reader.GetNamedDestinationFromStrings();
+                var v3 = reader.GetPageContent(page);
+                var v4 = reader.GetPageN(page);
+                //var v5=reader.get
+                //PP.SimpleTextExtractionStrategy blah = new PP.SimpleTextExtractionStrategy();
+                tmp = blah.GetResultantText();
+                if (atester == null)
+                    atester = new tester();
+                tmp = PP.PdfTextExtractor.GetTextFromPage(reader, page);
+                tmp = PP.PdfTextExtractor.GetTextFromPage(reader, page, blah);
+                tmp = PP.PdfTextExtractor.GetTextFromPage(reader, page, atester);
+                PP.PdfContentReaderTool.ListContentStreamForPage(reader, page, Console.Out);
+
+                //PdfReaderContentParser
+                this.showPage(reader, page);
+                //((PP.ITextExtractionStrategy) new tester()).
+                Debug.WriteLine("here");
+            }
+        }
+
+        void showPage(PdfReader reader, int page) {
+            PP.PdfReaderContentParser parser;
+            MyRenderListener ml = new MyRenderListener();
+
+            parser = new PP.PdfReaderContentParser(reader);
+            var avar = parser.ProcessContent<MyRenderListener>(page, ml);
+            //var avar2-parser.ProcessContent()
+            Trace.WriteLine("here");
+        }
+
+
+        void myproc(PdfReader currentReader) {
+            //StringBuilder sb;
+
+            using (PdfDocument document = new PdfDocument()) {
+                using (MyDocListener ml = new MyDocListener()) {
+                    using (MemoryStream ms = new MemoryStream()) {
+                        //using (StreamWriter sw2 = new StreamWriter() {
+//                        using (PdfWriter writer = PdfWriter.GetInstance(document, ms, ml)) {
+                            using (PdfWriter writer = PdfWriter.GetInstance(document, ms)) {
+                                myproc2(currentReader, writer, document);
+                        }
+                    }
+                }
+            }
+        }
+
+        void myproc2(PdfReader currentReader, PdfWriter writer, PdfDocument document) {
+
+            int firstPage = 1, dPage, newDestPage;
+            float ee, ff, a, e, f;
+
+            float W = PageSize.A4.Width / 2;
+            float H = PageSize.A4.Height / 2;
+            for (int page = 1; page <= currentReader.NumberOfPages; page++) {
+                //PdfImportedPage importedPage = writer.GetImportedPage(currentReader, page);
+                a = 0.5f;
+                e = (page % 2 == 0) ? W : 0;
+                f = (page % 4 == 1 || page % 4 == 2) ? H : 0;
+                var links = currentReader.GetLinks(page);
+                //a     cb.AddTemplate(importedPage, a, 0, 0, a, e, f);
+                for (int j = 0; j < links.Count; j++) {
+                    PdfAnnotation.PdfImportedLink link = (PdfAnnotation.PdfImportedLink) links[j];
+                    if (link.IsInternal()) {
+                        dPage = link.GetDestinationPage();
+                        newDestPage = (dPage - 1) / 4 + firstPage;
+                        ee = (dPage % 2 == 0) ? W : 0;
+                        ff = (dPage % 4 == 1 || dPage % 4 == 2) ? H : 0;
+                        link.SetDestinationPage(newDestPage);
+                        link.TransformDestination(a, 0, 0, a, ee, ff);
+                    }
+                    link.TransformRect(a, 0, 0, a, e, f);
+                    writer.AddAnnotation(link.CreateAnnotation(writer));
+                }
+                if (page % 4 == 0)
+                    document.NewPage();
+            }
+        }
+    }
+
+    class MyDocListener : IDocListener {
+        #region fields
+          bool disposedValue = false; // To detect redundant calls
+          int _pageCount;
+          bool _newPage;
+          bool _setMarginMirror;
+          bool _setMargin;
+          bool _setPageSize;
+          bool _setMarginMirrorTB; 
+        #endregion
+
+        public int PageCount {
+            set {
+                Logger.log(MethodBase.GetCurrentMethod(),"setting to "+value);
+                _pageCount = value;
+                //return _pageCount;
+            }
+        }
+
+        public bool Add(IElement element) {
+            Logger.log(MethodBase.GetCurrentMethod());
+            throw new NotImplementedException();
+        }
+
+        public void Close() {
+            Logger.log(MethodBase.GetCurrentMethod());
+            //throw new NotImplementedException();
+        }
+
+        public bool NewPage() {
+            Logger.log(MethodBase.GetCurrentMethod());
+            return _newPage;
+        }
+
+        public void Open() {
+            Logger.log(MethodBase.GetCurrentMethod());
+        }
+
+        public void ResetPageCount() {
+            Logger.log(MethodBase.GetCurrentMethod());
+            _pageCount = 0;
+        }
+
+        public bool SetMarginMirroring(bool marginMirroring) {
+            Logger.log(MethodBase.GetCurrentMethod());
+            return _setMarginMirror;
+        }
+
+        public bool SetMarginMirroringTopBottom(bool marginMirroringTopBottom) {
+            Logger.log(MethodBase.GetCurrentMethod());
+            return _setMarginMirrorTB;
+        }
+
+        public bool SetMargins(float marginLeft, float marginRight, float marginTop, float marginBottom) {
+            Logger.log(MethodBase.GetCurrentMethod());
+            return _setMargin;
+        }
+
+        public bool SetPageSize(Rectangle pageSize) {
+            Logger.log(MethodBase.GetCurrentMethod());
+            return _setPageSize;
+        }
+
+        #region IDisposable Support
+
+
+        protected virtual void Dispose(bool disposing) {
+            Logger.log(MethodBase.GetCurrentMethod(),"here-0");
+            if (!disposedValue) {
+                Logger.log(MethodBase.GetCurrentMethod(), "here-1");
+                if (disposing) {
+                    Logger.log(MethodBase.GetCurrentMethod(), "here-2");
+                    // TODO: dispose managed state (managed objects).
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // TODO: set large fields to null.
+
+                disposedValue = true;
+            }
+        }
+
+        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~MyListener2() {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose() {
+            Logger.log(MethodBase.GetCurrentMethod(), "here");
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
+        #endregion
+
+    }
+
+    class MyRenderListener : PP.IRenderListener {
+        void PP.IRenderListener.BeginTextBlock() {
+            Logger.log(MethodBase.GetCurrentMethod());
+        }
+
+        void PP.IRenderListener.EndTextBlock() {
+            Logger.log(MethodBase.GetCurrentMethod());
+        }
+
+        void PP.IRenderListener.RenderImage(PP.ImageRenderInfo renderInfo) {
+            Logger.log(MethodBase.GetCurrentMethod());
+        }
+
+        void PP.IRenderListener.RenderText(PP.TextRenderInfo renderInfo) {
+            Logger.log(MethodBase.GetCurrentMethod());
+        }
+    }
+
+    class tester : PP.ITextExtractionStrategy {
+        void PP.IRenderListener.BeginTextBlock() {
+            Logger.log(MethodBase.GetCurrentMethod());
+        }
+
+        void PP.IRenderListener.EndTextBlock() {
+            Logger.log(MethodBase.GetCurrentMethod());
+        }
+
+        string PP.ITextExtractionStrategy.GetResultantText() {
+            Logger.log(MethodBase.GetCurrentMethod());
+            return null;
+        }
+
+        void PP.IRenderListener.RenderImage(PP.ImageRenderInfo renderInfo) {
+            Logger.log(MethodBase.GetCurrentMethod());
+        }
+
+        void PP.IRenderListener.RenderText(PP.TextRenderInfo renderInfo) {
+            Logger.log(MethodBase.GetCurrentMethod());
         }
     }
 }

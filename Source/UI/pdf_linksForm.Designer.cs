@@ -45,6 +45,7 @@ namespace NSPdf_links {
             this.btnClear = new System.Windows.Forms.Button();
             this.btnGenOpSheet = new System.Windows.Forms.Button();
             this.pdflinksFormBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            this.tsmiFileOpen = new System.Windows.Forms.ToolStripMenuItem();
             this.ms1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pdflinksFormBindingSource)).BeginInit();
             this.SuspendLayout();
@@ -62,6 +63,7 @@ namespace NSPdf_links {
             // tsmiFile
             // 
             this.tsmiFile.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.tsmiFileOpen,
             this.tsmiFileNew,
             this.tsmiFileExit});
             this.tsmiFile.Name = "tsmiFile";
@@ -71,14 +73,14 @@ namespace NSPdf_links {
             // tsmiFileNew
             // 
             this.tsmiFileNew.Name = "tsmiFileNew";
-            this.tsmiFileNew.Size = new System.Drawing.Size(98, 22);
+            this.tsmiFileNew.Size = new System.Drawing.Size(155, 22);
             this.tsmiFileNew.Text = "New";
             this.tsmiFileNew.Click += new System.EventHandler(this.tsmiFileNew_Click);
             // 
             // tsmiFileExit
             // 
             this.tsmiFileExit.Name = "tsmiFileExit";
-            this.tsmiFileExit.Size = new System.Drawing.Size(98, 22);
+            this.tsmiFileExit.Size = new System.Drawing.Size(155, 22);
             this.tsmiFileExit.Text = "Exit";
             this.tsmiFileExit.Click += new System.EventHandler(this.exitClick);
             // 
@@ -190,6 +192,14 @@ namespace NSPdf_links {
             // 
             this.pdflinksFormBindingSource.DataSource = typeof(NSPdf_links.pdf_linksForm);
             // 
+            // tsmiFileOpen
+            // 
+            this.tsmiFileOpen.Name = "tsmiFileOpen";
+            this.tsmiFileOpen.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
+            this.tsmiFileOpen.Size = new System.Drawing.Size(155, 22);
+            this.tsmiFileOpen.Text = "Open...";
+            this.tsmiFileOpen.Click += new System.EventHandler(this.tsmiFileOpen_Click);
+            // 
             // pdf_linksForm
             // 
             this.ClientSize = new System.Drawing.Size(542, 494);
@@ -241,5 +251,6 @@ namespace NSPdf_links {
         private ListBox lbOps;
         private Button btnClear;
         private Button btnGenOpSheet;
+        private ToolStripMenuItem tsmiFileOpen;
     }
 }
