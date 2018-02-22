@@ -8,6 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
+#undef USE_PRIVATE
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -16,32 +17,47 @@ using System.Reflection;
 using System.Windows.Forms;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
+using ITF=iTextSharp.text.Font;
+//iTextSharp.text.Font.NORMAL, BaseColor.BLUE);
 
 namespace NSPdf_links {
-
     public partial class pdf_linksForm : INotifyPropertyChanged {
 
+        #region constants
         const string DRAG_TYPE = "FileDrop";
+        #endregion
 
         #region fields
+#if USE_PRIVATE
         PropertyChangedEventHandler _pceh;
+        event PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged { add { _pceh += value; } remove { _pceh -= value; } }
+#else
+        public event PropertyChangedEventHandler PropertyChanged;
+#endif
         static string _findFile;
         List<FullFilePath> _instrSheets = new List<FullFilePath>();
         List<FullFilePath> _opSheets = new List<FullFilePath>();
         string _insSheetLoc;
         string _opSheetLoc;
+        string prev;
+        string _findModel;
         #endregion
 
         #region ctor
         public pdf_linksForm() {
             InitializeComponent();
-            instructionSheetLocation = @"U:\Pack\Instruction_Sheets\Approved";
-            opsheetLocation = @"U:\Pack\OpSheets\Approved";
+
+            this.DataBindings.Add("instructionSheetLocation", this.tbInstSheet, "Text");
+            this.DataBindings.Add("opsheetLocation", this.tbOpSheet, "Text");
+
+            this.tbInstSheet.DataBindings.Add("Text", this, "instructionSheetLocation");
+            this.tbOpSheet.DataBindings.Add("Text", this, "opsheetLocation");
+
+
         }
         #endregion
 
         #region properties
-        event PropertyChangedEventHandler INotifyPropertyChanged.PropertyChanged { add { _pceh += value; } remove { _pceh -= value; } }
         public string instructionSheetLocation {
             get { return _insSheetLoc; }
             set {
@@ -52,7 +68,6 @@ namespace NSPdf_links {
             }
         }
 
-        // U:\Pack\OpSheets\Approved
         public string opsheetLocation {
             get { return _opSheetLoc; }
             set {
@@ -65,6 +80,7 @@ namespace NSPdf_links {
 
         #endregion
 
+        #region action methods
         void exitClick(object sender, EventArgs ea) {
             CancelEventArgs cea = new CancelEventArgs();
 
@@ -76,22 +92,14 @@ namespace NSPdf_links {
         }
 
         void formLoad(object sender, EventArgs ea) {
-
-        }
-
-        [STAThread()]
-        public static void Main(string[] args) {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new pdf_linksForm());
+            instructionSheetLocation = @"U:\Pack\Instruction_Sheets\Approved";
+            opsheetLocation = @"U:\Pack\OpSheets\Approved";
         }
 
         void tsmiFileNew_Click(object sender, EventArgs e) {
             createDocument("new_test.pdf");
 
         }
-
-        string prev;
 
         void btnCreate_Click(object sender, EventArgs e) {
             SaveFileDialog ofd = new SaveFileDialog();
@@ -100,17 +108,55 @@ namespace NSPdf_links {
             ofd.InitialDirectory = Directory.GetCurrentDirectory();
             ofd.Filter = "PDF|*.pdf";
             ofd.FilterIndex = 0;
-            //ofd.Multiselect = false;
             ofd.AddExtension = true;
             if (!string.IsNullOrEmpty(prev)) {
                 ofd.InitialDirectory = dir = Path.GetDirectoryName(prev);
                 ofd.FileName = Path.GetFileName(prev);
             }
-            if (ofd.ShowDialog()  == DialogResult.OK) {
-                createDocument(prev=ofd.FileName);
+            if (ofd.ShowDialog() == DialogResult.OK) {
+                createDocument(prev = ofd.FileName);
+            }
+        }
+        void btnClear_Click(object sender, EventArgs e) {
+            resetDataSource(lbInstruct, _instrSheets);
+            resetDataSource(lbOps, _opSheets);
+        }
+        #endregion
+
+        void btnGenOpSheet_Click(object sender, EventArgs e) {
+            string[] files;
+            string model, wildCard;
+            IDictionary<string, List<FullFilePath>> modelMap;
+            FullFilePath ffp;
+            const string DEFAULT_WILDCARD = "*.pdf";
+
+            wildCard = DEFAULT_WILDCARD;
+            //wildCard = "R0920*.pdf";
+            //wildCard = "R092*.pdf";
+            files = Directory.GetFiles(this.opsheetLocation, wildCard);
+            if (files.Length > 0) {
+                modelMap = new Dictionary<string, List<FullFilePath>>();
+                foreach (string afile in files) {
+                    ffp = new FullFilePath(afile, true);
+                    if (ffp.isValid) {
+                        _findModel = model = ffp.model;
+                        _findModel = afile;
+                        if (!modelMap.ContainsKey(model))
+                            modelMap.Add(model, new List<FullFilePath>());
+                        if (!modelMap[model].Exists(findByRealPath))
+                            modelMap[model].Add(ffp);
+                    }
+                }
+                const string DEF_OP_FILENAME = "test.pdf";
+                if (File.Exists(DEF_OP_FILENAME))
+                    File.Delete(DEF_OP_FILENAME);
+                using (FileStream fs = new FileStream(DEF_OP_FILENAME, FileMode.OpenOrCreate)) {
+                    generatePDFDocument(fs, modelMap);
+                }
             }
         }
 
+        #region drag methods
         void lbInstruct_DragEnter(object sender, DragEventArgs e) {
             e.Effect = DragDropEffects.None;
             if (verifyProperDataContent(e, DRAG_TYPE))
@@ -125,12 +171,32 @@ namespace NSPdf_links {
             e.Effect = DragDropEffects.None;
             if (verifyProperDataContent(e, DRAG_TYPE))
                 e.Effect = DragDropEffects.Link;
-
         }
 
         void lbOps_DragDrop(object sender, DragEventArgs e) {
             addDataContent(e, DRAG_TYPE, _opSheets, lbOps);
         }
+        #endregion drag methods
+
+        #region main-line
+        [STAThread()]
+        public static void Main(string[] args) {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new pdf_linksForm());
+        }
+        #endregion
+
+        #region list-searching methods
+        static bool findIndexOf(FullFilePath ffp) {
+            return string.Compare(_findFile, ffp.fullPath, true) == 0;
+        }
+
+        bool findByRealPath(FullFilePath ffp) {
+            return string.Compare(ffp.realPath, _findModel, true) == 0;
+        }
+
+        #endregion
 
         bool verifyProperDataContent(DragEventArgs e, string dragType) {
             string[] files;
@@ -163,8 +229,13 @@ namespace NSPdf_links {
         }
 
         void doNotify(string propName) {
+#if !USE_PRIVATE
+            if (PropertyChanged != null)
+                PropertyChanged(this, new PropertyChangedEventArgs(propName));
+#else
             if (_pceh != null)
                 _pceh(this, new PropertyChangedEventArgs(propName));
+#endif
         }
 
         void doNotify(MethodBase mb) {
@@ -176,10 +247,7 @@ namespace NSPdf_links {
             doNotify(mbname);
         }
 
-        // U:\Pack\Instruction_Sheets\Approved
-
         void createDocument(string filename) {
-
             Document doc = new Document(PageSize.LETTER, 50, 50, 50, 50);
             FileStream fs = new FileStream(filename, FileMode.OpenOrCreate);
             PdfWriter writer = PdfWriter.GetInstance(doc, fs);
@@ -210,15 +278,6 @@ namespace NSPdf_links {
             }
         }
 
-        static bool findIndexOf(FullFilePath ffp) {
-            return string.Compare(_findFile, ffp.fullPath, true) == 0;
-        }
-
-        void btnClear_Click(object sender, EventArgs e) {
-            resetDataSource(lbInstruct, _instrSheets);
-            resetDataSource(lbOps, _opSheets);
-        }
-
         static void resetDataSource(ListBox lb, List<FullFilePath> alist) {
             var avar = lb.SelectionMode;
 
@@ -229,5 +288,80 @@ namespace NSPdf_links {
             lb.SelectionMode = avar;
         }
 
+        void generatePDFDocument(FileStream fs, IDictionary<string, List<FullFilePath>> modelMap) {
+            Document doc = new Document(PageSize.LETTER, 50, 50, 50, 50);
+            PdfWriter writer = PdfWriter.GetInstance(doc, fs);
+            List<string> models = new List<string>();
+
+            try {
+                models.AddRange(modelMap.Keys);
+                models.Sort();
+                doc.AddAuthor("rik-author");
+                doc.AddCreationDate();
+                doc.AddCreator("rik-creator");
+                doc.AddHeader("header-name", "header content");
+                doc.AddKeywords("kw1 kw2 kw3 kw4");
+                doc.AddLanguage("english");
+                doc.AddProducer();
+                doc.AddSubject("a subject");
+                doc.AddTitle("title");
+                doc.Open();
+                generateIndex(doc, models);
+                generateModelTables(modelMap, doc, models);
+                doc.Close();
+            } catch (Exception ex) {
+                Logger.log(MethodBase.GetCurrentMethod(), ex);
+            }
+        }
+
+        static void generateModelTables(IDictionary<string, List<FullFilePath>> modelMap, Document doc, List<string> models) {
+            PdfPTable table;
+            PdfPCell cell;
+            Chunk c;
+
+            foreach (string amodel in models) {
+                table = new PdfPTable(1);
+                table.AddCell(amodel);
+
+                cell = new PdfPCell();
+                c = new Chunk("Model " + amodel);
+                c.SetAnchor("page_" + amodel);
+                cell.AddElement(c);
+                table.AddCell(cell);
+
+                generateModelOpLinks(modelMap, doc, table, amodel);
+                doc.Add(table);
+            }
+        }
+
+        static void generateModelOpLinks(IDictionary<string, List<FullFilePath>> modelMap, Document doc, PdfPTable table, string amodel) {
+            PdfPCell cell;
+            Chunk c;
+
+            foreach (var avar in modelMap[amodel]) {
+                cell = new PdfPCell();
+                c = new Chunk("Op-" + avar.opNumber);
+                c.SetAnchor(avar.fullPath);
+                cell.AddElement(c);
+                table.AddCell(cell);
+                doc.Add(new Rectangle(10, 10));
+            }
+        }
+
+        static void generateIndex(Document doc, List<string> models) {
+            Anchor a;
+            Font f;
+            Paragraph p;
+
+            f = new Font(ITF.FontFamily.COURIER, 10f, iTextSharp.text.Font.NORMAL, BaseColor.BLUE);
+            foreach (string amodel in models) {
+                a = new Anchor(amodel, f);
+                a.Reference = "#page_" + amodel;
+                p = new Paragraph();
+                p.Add(a);
+                doc.Add(p);
+            }
+            doc.NewPage();
+        }
     }
 }

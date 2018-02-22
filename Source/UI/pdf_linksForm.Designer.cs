@@ -36,7 +36,6 @@ namespace NSPdf_links {
             this.label1 = new System.Windows.Forms.Label();
             this.btnInsLocation = new System.Windows.Forms.Button();
             this.tbInstSheet = new System.Windows.Forms.TextBox();
-            this.pdflinksFormBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.tbOpSheet = new System.Windows.Forms.TextBox();
             this.btnOpLocation = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
@@ -44,6 +43,8 @@ namespace NSPdf_links {
             this.lbInstruct = new System.Windows.Forms.ListBox();
             this.lbOps = new System.Windows.Forms.ListBox();
             this.btnClear = new System.Windows.Forms.Button();
+            this.btnGenOpSheet = new System.Windows.Forms.Button();
+            this.pdflinksFormBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.ms1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pdflinksFormBindingSource)).BeginInit();
             this.SuspendLayout();
@@ -102,20 +103,14 @@ namespace NSPdf_links {
             // tbInstSheet
             // 
             this.tbInstSheet.AllowDrop = true;
-            this.tbInstSheet.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pdflinksFormBindingSource, "instructionSheetLocation", true));
             this.tbInstSheet.Location = new System.Drawing.Point(15, 62);
             this.tbInstSheet.Name = "tbInstSheet";
             this.tbInstSheet.Size = new System.Drawing.Size(483, 20);
             this.tbInstSheet.TabIndex = 3;
             // 
-            // pdflinksFormBindingSource
-            // 
-            this.pdflinksFormBindingSource.DataSource = typeof(NSPdf_links.pdf_linksForm);
-            // 
             // tbOpSheet
             // 
             this.tbOpSheet.AllowDrop = true;
-            this.tbOpSheet.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.pdflinksFormBindingSource, "opsheetLocation", true));
             this.tbOpSheet.Location = new System.Drawing.Point(15, 273);
             this.tbOpSheet.Name = "tbOpSheet";
             this.tbOpSheet.Size = new System.Drawing.Size(483, 20);
@@ -181,9 +176,24 @@ namespace NSPdf_links {
             this.btnClear.UseVisualStyleBackColor = true;
             this.btnClear.Click += new System.EventHandler(this.btnClear_Click);
             // 
+            // btnGenOpSheet
+            // 
+            this.btnGenOpSheet.Location = new System.Drawing.Point(314, 465);
+            this.btnGenOpSheet.Name = "btnGenOpSheet";
+            this.btnGenOpSheet.Size = new System.Drawing.Size(94, 23);
+            this.btnGenOpSheet.TabIndex = 11;
+            this.btnGenOpSheet.Text = "Create Op Sheet";
+            this.btnGenOpSheet.UseVisualStyleBackColor = true;
+            this.btnGenOpSheet.Click += new System.EventHandler(this.btnGenOpSheet_Click);
+            // 
+            // pdflinksFormBindingSource
+            // 
+            this.pdflinksFormBindingSource.DataSource = typeof(NSPdf_links.pdf_linksForm);
+            // 
             // pdf_linksForm
             // 
             this.ClientSize = new System.Drawing.Size(542, 494);
+            this.Controls.Add(this.btnGenOpSheet);
             this.Controls.Add(this.btnClear);
             this.Controls.Add(this.lbOps);
             this.Controls.Add(this.lbInstruct);
@@ -230,5 +240,6 @@ namespace NSPdf_links {
         private ListBox lbInstruct;
         private ListBox lbOps;
         private Button btnClear;
+        private Button btnGenOpSheet;
     }
 }
