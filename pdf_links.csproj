@@ -54,6 +54,9 @@
   <ItemGroup Label="IDK">
     <Compile Include="Source\FullFilePath.cs" />
     <Compile Include="Source\Logger.cs" />
+    <Compile Include="Source\MyDocListener.cs" />
+    <Compile Include="Source\MyRenderListener.cs" />
+    <Compile Include="Source\tester.cs" />
     <Compile Include="Source\UI\pdf_linksForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -71,6 +74,10 @@
     <ProjectReference Include="..\..\projects\other\github\itextsharp\src\core\itextsharp.csproj">
       <Project>{84c4fdd9-3ed7-453b-b9da-b3ed52cb071c}</Project>
       <Name>itextsharp</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ColtUtilities2\ColtUtilities2.csproj">
+      <Project>{31ad9839-84e5-4726-b9b0-34ea62290592}</Project>
+      <Name>ColtUtilities2</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

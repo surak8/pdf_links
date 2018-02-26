@@ -22,6 +22,7 @@ using iTextSharp.text.pdf;
 using PP = iTextSharp.text.pdf.parser;
 using ITF = iTextSharp.text.Font;
 using System.Collections;
+using Colt.Utility.Basic;
 
 namespace NSPdf_links {
     public partial class pdf_linksForm : INotifyPropertyChanged {
@@ -30,6 +31,7 @@ namespace NSPdf_links {
         const string DRAG_TYPE = "FileDrop";
         #endregion
 
+        const string PREV_KEY = "Previous File";
         #region fields
 #if USE_PRIVATE
         PropertyChangedEventHandler _pceh;
@@ -95,13 +97,28 @@ namespace NSPdf_links {
         }
 
         void formLoad(object sender, EventArgs ea) {
+            string tmp;
+
+            tmp = Utility.defaultRegistry().GetValue(PREV_KEY, string.Empty) as string;
+
+            if (!string.IsNullOrEmpty(tmp))
+                prev = tmp;
             instructionSheetLocation = @"U:\Pack\Instruction_Sheets\Approved";
             opsheetLocation = @"U:\Pack\OpSheets\Approved";
         }
 
         void tsmiFileNew_Click(object sender, EventArgs e) {
-            createDocument("new_test.pdf");
+            string newPath;
+            const string APATH = "new_test.pdf";
 
+            newPath = makePath(APATH);
+            createDocument(newPath);
+        }
+
+        string makePath(string afile) {
+            if (string.IsNullOrEmpty(prev))
+                return Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileName(afile));
+            return Path.Combine(Path.GetDirectoryName(prev), Path.GetFileName(afile));
         }
 
         void btnCreate_Click(object sender, EventArgs e) {
@@ -118,19 +135,23 @@ namespace NSPdf_links {
             }
             if (ofd.ShowDialog() == DialogResult.OK) {
                 createDocument(prev = ofd.FileName);
+                Utility.defaultRegistry().SetValue(prev, PREV_KEY);
+                //MessageBox.Show("Created file:" + prev, "PDF-file created.");
             }
         }
+
         void btnClear_Click(object sender, EventArgs e) {
             resetDataSource(lbInstruct, _instrSheets);
             resetDataSource(lbOps, _opSheets);
         }
+
         #endregion
 
         void btnGenOpSheet_Click(object sender, EventArgs e) {
             IDictionary<string, List<FullFilePath>> modelMap;
             FullFilePath ffp;
             string[] files;
-            string model, wildCard;
+            string model, wildCard,filename;
             const string DEFAULT_WILDCARD = "*.pdf";
 
             wildCard = DEFAULT_WILDCARD;
@@ -151,10 +172,12 @@ namespace NSPdf_links {
                     }
                 }
                 const string DEF_OP_FILENAME = "test.pdf";
-                if (File.Exists(DEF_OP_FILENAME))
-                    File.Delete(DEF_OP_FILENAME);
-                using (FileStream fs = new FileStream(DEF_OP_FILENAME, FileMode.OpenOrCreate)) {
+                filename = makePath(DEF_OP_FILENAME);
+                if (File.Exists(filename))
+                    File.Delete(filename);
+                using (FileStream fs = new FileStream(filename, FileMode.OpenOrCreate)) {
                     generatePDFDocument(fs, modelMap);
+                    MessageBox.Show("Created file: " + filename, "PDF-file created.");
                 }
             }
         }
@@ -263,6 +286,7 @@ namespace NSPdf_links {
                 doc.Add(new Paragraph("Operation sheets:"));
                 addFromList(doc, _opSheets);
                 doc.Close();
+                MessageBox.Show("Created file:" + filename, "PDF-file created.");
             } catch (Exception ex) {
                 Logger.log(MethodBase.GetCurrentMethod(), ex);
             }
@@ -371,6 +395,7 @@ namespace NSPdf_links {
         }
 
         void tsmiFileOpen_Click(object sender, EventArgs e) {
+            PdfReader reader;
             OpenFileDialog ofd = new OpenFileDialog();
             //string dir;
 
@@ -384,7 +409,7 @@ namespace NSPdf_links {
                 ofd.FileName = Path.GetFileName(prev);
             }
             if (ofd.ShowDialog() == DialogResult.OK) {
-                PdfReader reader = new PdfReader(prev = ofd.FileName);
+                reader = new PdfReader(prev = ofd.FileName);
                 //PdfReader pdfReader = new PdfReader(fileName);
 
                 //for (int page = 1; page <= reader.NumberOfPages; page++) {
@@ -396,6 +421,8 @@ namespace NSPdf_links {
                 //    //text.Append(currentText);
                 //}
                 //doSomething(reader);
+                Utility.defaultRegistry().SetValue(prev, PREV_KEY);
+                //Colt.Utility.UI.
                 myproc(reader);
                 reader.Close();
             }
@@ -443,7 +470,6 @@ namespace NSPdf_links {
             Trace.WriteLine("here");
         }
 
-
         void myproc(PdfReader currentReader) {
             //StringBuilder sb;
 
@@ -451,9 +477,9 @@ namespace NSPdf_links {
                 using (MyDocListener ml = new MyDocListener()) {
                     using (MemoryStream ms = new MemoryStream()) {
                         //using (StreamWriter sw2 = new StreamWriter() {
-//                        using (PdfWriter writer = PdfWriter.GetInstance(document, ms, ml)) {
-                            using (PdfWriter writer = PdfWriter.GetInstance(document, ms)) {
-                                myproc2(currentReader, writer, document);
+                        //                        using (PdfWriter writer = PdfWriter.GetInstance(document, ms, ml)) {
+                        using (PdfWriter writer = PdfWriter.GetInstance(document, ms)) {
+                            myproc2(currentReader, writer, document);
                         }
                     }
                 }
@@ -490,147 +516,6 @@ namespace NSPdf_links {
                 if (page % 4 == 0)
                     document.NewPage();
             }
-        }
-    }
-
-    class MyDocListener : IDocListener {
-        #region fields
-          bool disposedValue = false; // To detect redundant calls
-          int _pageCount;
-          bool _newPage;
-          bool _setMarginMirror;
-          bool _setMargin;
-          bool _setPageSize;
-          bool _setMarginMirrorTB; 
-        #endregion
-
-        public int PageCount {
-            set {
-                Logger.log(MethodBase.GetCurrentMethod(),"setting to "+value);
-                _pageCount = value;
-                //return _pageCount;
-            }
-        }
-
-        public bool Add(IElement element) {
-            Logger.log(MethodBase.GetCurrentMethod());
-            throw new NotImplementedException();
-        }
-
-        public void Close() {
-            Logger.log(MethodBase.GetCurrentMethod());
-            //throw new NotImplementedException();
-        }
-
-        public bool NewPage() {
-            Logger.log(MethodBase.GetCurrentMethod());
-            return _newPage;
-        }
-
-        public void Open() {
-            Logger.log(MethodBase.GetCurrentMethod());
-        }
-
-        public void ResetPageCount() {
-            Logger.log(MethodBase.GetCurrentMethod());
-            _pageCount = 0;
-        }
-
-        public bool SetMarginMirroring(bool marginMirroring) {
-            Logger.log(MethodBase.GetCurrentMethod());
-            return _setMarginMirror;
-        }
-
-        public bool SetMarginMirroringTopBottom(bool marginMirroringTopBottom) {
-            Logger.log(MethodBase.GetCurrentMethod());
-            return _setMarginMirrorTB;
-        }
-
-        public bool SetMargins(float marginLeft, float marginRight, float marginTop, float marginBottom) {
-            Logger.log(MethodBase.GetCurrentMethod());
-            return _setMargin;
-        }
-
-        public bool SetPageSize(Rectangle pageSize) {
-            Logger.log(MethodBase.GetCurrentMethod());
-            return _setPageSize;
-        }
-
-        #region IDisposable Support
-
-
-        protected virtual void Dispose(bool disposing) {
-            Logger.log(MethodBase.GetCurrentMethod(),"here-0");
-            if (!disposedValue) {
-                Logger.log(MethodBase.GetCurrentMethod(), "here-1");
-                if (disposing) {
-                    Logger.log(MethodBase.GetCurrentMethod(), "here-2");
-                    // TODO: dispose managed state (managed objects).
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
-
-                disposedValue = true;
-            }
-        }
-
-        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~MyListener2() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose() {
-            Logger.log(MethodBase.GetCurrentMethod(), "here");
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
-
-    }
-
-    class MyRenderListener : PP.IRenderListener {
-        void PP.IRenderListener.BeginTextBlock() {
-            Logger.log(MethodBase.GetCurrentMethod());
-        }
-
-        void PP.IRenderListener.EndTextBlock() {
-            Logger.log(MethodBase.GetCurrentMethod());
-        }
-
-        void PP.IRenderListener.RenderImage(PP.ImageRenderInfo renderInfo) {
-            Logger.log(MethodBase.GetCurrentMethod());
-        }
-
-        void PP.IRenderListener.RenderText(PP.TextRenderInfo renderInfo) {
-            Logger.log(MethodBase.GetCurrentMethod());
-        }
-    }
-
-    class tester : PP.ITextExtractionStrategy {
-        void PP.IRenderListener.BeginTextBlock() {
-            Logger.log(MethodBase.GetCurrentMethod());
-        }
-
-        void PP.IRenderListener.EndTextBlock() {
-            Logger.log(MethodBase.GetCurrentMethod());
-        }
-
-        string PP.ITextExtractionStrategy.GetResultantText() {
-            Logger.log(MethodBase.GetCurrentMethod());
-            return null;
-        }
-
-        void PP.IRenderListener.RenderImage(PP.ImageRenderInfo renderInfo) {
-            Logger.log(MethodBase.GetCurrentMethod());
-        }
-
-        void PP.IRenderListener.RenderText(PP.TextRenderInfo renderInfo) {
-            Logger.log(MethodBase.GetCurrentMethod());
         }
     }
 }
